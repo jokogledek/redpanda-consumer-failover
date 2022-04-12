@@ -1,0 +1,7 @@
+kafka:
+  brokers:
+    - "0.0.0.0:61424"
+    - "0.0.0.0:61429"
+    - "0.0.0.0:61430"
+  topic: "testing_failover"
+  consumer_group: "rpk_failover"
