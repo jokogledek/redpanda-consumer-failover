@@ -5,3 +5,5 @@ kafka:
     - "0.0.0.0:61430"
   topic: "testing_failover"
   consumer_group: "rpk_failover"
+files:
+  file_path: "./files/bench_file/1997-2017.csv"

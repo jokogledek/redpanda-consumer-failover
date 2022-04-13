@@ -3,7 +3,9 @@ package main
 import (
 	"flag"
 	"github.com/rs/zerolog/log"
-	"github.com/ujunglangit-id/redpanda-consumer-failover/pkg/model/config"
+	"github.com/ujunglangit-id/redpanda-consumer-failover/internal/model/config"
+	"github.com/ujunglangit-id/redpanda-consumer-failover/internal/producer"
+	"os"
 )
 
 func main() {
@@ -15,4 +17,9 @@ func main() {
 		log.Fatal().Err(err).Msg("[main] failed to load config")
 	}
 	defer cfg.LogFile.Close()
+
+	p := producer.NewProducer(*workerName, cfg)
+	p.LoadDataSource()
+	p.Run()
+	os.Exit(1)
 }

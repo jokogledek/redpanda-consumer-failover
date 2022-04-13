@@ -4,14 +4,19 @@ import (
 	"fmt"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"github.com/ujunglangit-id/redpanda-consumer-failover/pkg/model/types"
+	"github.com/ujunglangit-id/redpanda-consumer-failover/internal/model/types"
 	"gopkg.in/yaml.v2"
 	"os"
 )
 
 type Config struct {
 	Kafka   KafkaConfig `yaml:"kafka"`
+	Files   FileConfig  `yaml:"files"`
 	LogFile *os.File    `yaml:"-"`
+}
+
+type FileConfig struct {
+	FilePath string `yaml:"file_path"`
 }
 
 type KafkaConfig struct {
@@ -28,9 +33,7 @@ func InitConfig(logPrefix string) (cfg *Config, err error) {
 }
 
 func (cfg *Config) initLog(prefix string) {
-
 	//initialize log format & log file output
-	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 	logFile, err := os.OpenFile(prefix+"_"+types.LogFileName, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
 		log.Fatal().Err(err).Msg("error opening file")
