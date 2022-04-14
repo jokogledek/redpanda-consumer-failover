@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	workerName := flag.String("name", "consumer", "specify worker name")
+	workerName := flag.String("name", "nocomit_consumer", "specify worker name")
 	flag.Parse()
 
 	cfg, err := config.InitConfig(*workerName)
@@ -18,6 +18,6 @@ func main() {
 	}
 	defer cfg.LogFile.Close()
 
-	consumer.NewConsumer(*workerName, cfg, false).InitConsumer()
+	consumer.NewConsumer(*workerName, cfg, true).InitConsumer()
 	os.Exit(1)
 }

@@ -20,6 +20,7 @@ type Consumer struct {
 	WorkerName string
 	Client     *kgo.Client
 	consumers  map[tp]*pconsumer
+	noCommit   bool
 }
 
 type pconsumer struct {
@@ -27,16 +28,18 @@ type pconsumer struct {
 	topic     string
 	partition int32
 
-	quit chan struct{}
-	done chan struct{}
-	recs chan []*kgo.Record
+	quit    chan struct{}
+	done    chan struct{}
+	recs    chan []*kgo.Record
+	noComit bool
 }
 
-func NewConsumer(name string, cfg *config.Config) *Consumer {
+func NewConsumer(name string, cfg *config.Config, noCommit bool) *Consumer {
 	return &Consumer{
 		Config:     cfg,
 		WorkerName: name,
 		consumers:  make(map[tp]*pconsumer),
+		noCommit:   noCommit,
 	}
 }
 
@@ -50,6 +53,9 @@ func (c *Consumer) InitConsumer() {
 		kgo.OnPartitionsLost(c.lost),
 		kgo.DisableAutoCommit(),
 		kgo.BlockRebalanceOnPoll(),
+		kgo.SessionTimeout(time.Second * 6),
+		kgo.RebalanceTimeout(time.Second * 10),
+		kgo.HeartbeatInterval(time.Second * 2),
 	}
 
 	cl, err := kgo.NewClient(opts...)
@@ -71,9 +77,10 @@ func (c *Consumer) assigned(_ context.Context, cl *kgo.Client, assigned map[stri
 				topic:     topic,
 				partition: partition,
 
-				quit: make(chan struct{}),
-				done: make(chan struct{}),
-				recs: make(chan []*kgo.Record, 10),
+				quit:    make(chan struct{}),
+				done:    make(chan struct{}),
+				recs:    make(chan []*kgo.Record, 10),
+				noComit: c.noCommit,
 			}
 			c.consumers[tp{topic, partition}] = pc
 			go pc.consume()
@@ -145,12 +152,19 @@ func (pc *pconsumer) consume() {
 		case recs := <-pc.recs:
 			time.Sleep(time.Duration(rand.Intn(150)+100) * time.Millisecond) // simulate work
 			fmt.Printf("Some sort of work done, about to commit t %s p %d\n", pc.topic, pc.partition)
-			//for _, v := range recs {
-			//	fmt.Printf("test ignore commit %s\n", string(v.Value))
-			//}
-			err := pc.cl.CommitRecords(context.Background(), recs...)
-			if err != nil {
-				fmt.Printf("Error when committing offsets to kafka err: %v t: %s p: %d offset %d\n", err, pc.topic, pc.partition, recs[len(recs)-1].Offset+1)
+			if pc.noComit {
+				for _, v := range recs {
+					fmt.Printf("ignore commit for data : %s\n", string(v.Value))
+				}
+			} else {
+				err := pc.cl.CommitRecords(context.Background(), recs...)
+				if err != nil {
+					fmt.Printf("Error when committing offsets to kafka err: %v t: %s p: %d offset %d\n", err, pc.topic, pc.partition, recs[len(recs)-1].Offset+1)
+				} else {
+					for _, v := range recs {
+						fmt.Printf("done commit for data : %s\n", string(v.Value))
+					}
+				}
 			}
 		}
 	}
